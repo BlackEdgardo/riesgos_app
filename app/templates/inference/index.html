@@ -1,0 +1,45 @@
+{% extends "basic.html" %}
+
+{% block title %}
+Seleccionar modelo – Inferencia
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+
+                <h3 class="mb-3 text-center">
+                    Selecciona un modelo para realizar inferencia
+                </h3>
+
+                {% if modelos %}
+                    <ul class="list-group">
+                        {% for m in modelos %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <strong>{{ m.nombre }}</strong>
+                                {% if m.descripcion %}
+                                    <br><small>{{ m.descripcion }}</small>
+                                {% endif %}
+                            </span>
+
+                            <a class="btn btn-primary btn-sm"
+                               href="{{ url_for('inference.ejecutar_inferencia', modelo_id=m.id) }}">
+                                Usar este modelo
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-warning text-center">
+                        No hay modelos registrados.
+                    </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,276 @@
+{% extends "basic.html" %}
+
+{% block title %} Modelos Bayesianos {% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div id="app" class="row">
+  <div class="col-12">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="m-0 fw-bold text-dark"><i class="fas fa-project-diagram me-2 text-primary"></i>Modelos Bayesianos</h2>
+        <p class="text-muted mb-0">Gestiona tus redes y evaluaciones de riesgo</p>
+      </div>
+      <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#crearModal">
+        <i class="fas fa-plus me-1"></i> Nuevo Modelo
+      </button>
+    </div>
+
+    <div v-if="loading" class="alert alert-info d-flex align-items-center">
+      <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+      Cargando datos...
+    </div>
+    <div v-if="error" class="alert alert-danger">
+      <i class="fas fa-exclamation-triangle me-2"></i> ${ error }
+    </div>
+
+    <div class="card shadow-sm border-0" v-if="!loading && !error">
+      <div class="card-body p-0">
+        <div class="table-responsive p-3">
+          <table id="modelos_datatable" class="table table-hover align-middle w-100">
+            <thead class="table-light text-secondary">
+              <tr>
+                <th style="width: 5%">ID</th>
+                <th style="width: 30%">Nombre del Modelo</th>
+                <th style="width: 20%">Empresa / Sector</th>
+                <th style="width: 20%">Metadatos</th>
+                <th style="width: 25%" class="text-end">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="m in modelos" :key="m.id">
+                <td><span class="badge bg-light text-secondary border">#${ m.id }</span></td>
+                
+                <td>
+                  <div class="fw-bold text-dark">${ m.nombre }</div>
+                  <small class="text-muted" v-if="m.descripcion">${ m.descripcion.substring(0, 40) }...</small>
+                </td>
+                
+                <td>
+                   <div v-if="m.empresa_nombre !== 'Sin asignar'">
+                     <i class="fas fa-building text-secondary me-1"></i> ${ m.empresa_nombre }
+                   </div>
+                   <span v-else class="badge bg-secondary bg-opacity-10 text-secondary">Sin asignar</span>
+                </td>
+                
+                <td>
+                  <div class="small text-muted"><i class="fas fa-user me-1"></i> ${ m.creado_por_email }</div>
+                  <div class="mt-1">
+                    <span class="badge bg-info bg-opacity-10 text-info border border-info">
+                      <i class="fas fa-circle-nodes"></i> ${ m.nodos ? m.nodos.length : 0 } nodos
+                    </span>
+                  </div>
+                </td>
+                
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    
+                    <a :href="'/modelos-bn/' + m.id" 
+                       class="btn btn-sm btn-outline-primary" 
+                       title="Diseñar Red Bayesiana">
+                      <i class="fas fa-network-wired"></i>
+                    </a>
+
+                    <a :href="'/inferencia/' + m.id" 
+                       class="btn btn-sm btn-outline-success" 
+                       title="Ejecutar Inferencia / Riesgo">
+                      <i class="fas fa-bolt"></i>
+                    </a>
+
+                    <button @click="prepararEdicion(m)" 
+                            class="btn btn-sm btn-outline-secondary"
+                            title="Editar Propiedades">
+                      <i class="fas fa-pen"></i>
+                    </button>
+
+                    <button @click="confirmarEliminar(m)" 
+                            class="btn btn-sm btn-outline-danger"
+                            data-bs-toggle="modal" data-bs-target="#eliminarModal"
+                            title="Eliminar Modelo">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="crearModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <form action="{{ url_for('risk_model.nuevo_modelo') }}" method="POST" class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Crear Nuevo Modelo</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nombre del Modelo</label>
+              <input type="text" name="nombre" class="form-control" required placeholder="Ej: Riesgo de Disponibilidad Web">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Asignar a Empresa</label>
+              <select name="empresa_id" class="form-select">
+                <option value="">-- Seleccionar Empresa (Opcional) --</option>
+                <option v-for="emp in empresas" :value="emp.id">${ emp.nombre }</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Descripción</label>
+              <textarea name="descripcion" class="form-control" rows="3" placeholder="Breve descripción del objetivo de este modelo..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary px-4">Crear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal fade" id="editarModal" tabindex="-1" aria-hidden="true" ref="modalEditar">
+      <div class="modal-dialog">
+        <form v-if="modeloEditando" :action="'/modelos-bn/' + modeloEditando.id + '/editar'" method="POST" class="modal-content">
+          <div class="modal-header bg-warning bg-opacity-25">
+            <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Modelo</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nombre</label>
+              <input type="text" name="nombre" v-model="modeloEditando.nombre" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Empresa</label>
+              <select name="empresa_id" v-model="modeloEditando.empresa_id" class="form-select">
+                <option :value="null">-- Sin asignar --</option>
+                <option v-for="emp in empresas" :value="emp.id">${ emp.nombre }</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Descripción</label>
+              <textarea name="descripcion" v-model="modeloEditando.descripcion" class="form-control" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning">Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal fade" id="eliminarModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title"><i class="fas fa-trash-alt me-2"></i>Confirmar Eliminación</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body text-center py-4" v-if="modeloAEliminar">
+            <i class="fas fa-exclamation-circle text-danger fa-3x mb-3"></i>
+            <p class="lead mb-1">¿Estás seguro de eliminar?</p>
+            <p class="fw-bold text-dark mb-2">"${ modeloAEliminar.nombre }"</p>
+            <small class="text-muted d-block mx-auto w-75">
+              Esta acción es irreversible. Se perderán el diseño de la red y todos los historiales de inferencia.
+            </small>
+          </div>
+          <div class="modal-footer justify-content-center">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">No, Cancelar</button>
+            <form v-if="modeloAEliminar" :action="'/modelos-bn/' + modeloAEliminar.id + '/eliminar'" method="POST">
+              <button class="btn btn-danger px-4" type="submit">Sí, Eliminar Definitivamente</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+new Vue({
+  el: '#app',
+  delimiters: ['${', '}'],
+  data() {
+    return {
+      modelos: [],
+      empresas: [],
+      loading: true,
+      error: null,
+      modeloEditando: null,
+      modeloAEliminar: null,
+      dataTable: null,
+      bsModalEditar: null
+    }
+  },
+  mounted() {
+    this.cargarDatos();
+  },
+  methods: {
+    cargarDatos() {
+      // Cargar Empresas
+      fetch('/modelos-bn/empresas/json')
+        .then(res => res.json())
+        .then(data => { this.empresas = data; })
+        .catch(err => console.error("Error empresas", err));
+
+      // Cargar Modelos
+      fetch('/modelos-bn/json')
+        .then(res => {
+          if (!res.ok) throw new Error('Error HTTP ' + res.status)
+          return res.json()
+        })
+        .then(data => {
+          this.modelos = data.map(m => ({
+            ...m,
+            nodos: (m.estructura_json && m.estructura_json.nodes) ? m.estructura_json.nodes : []
+          }));
+          this.loading = false;
+          // Inicializar DataTables después de renderizar Vue
+          this.$nextTick(() => { this.initDataTable() });
+        })
+        .catch(err => {
+          this.error = 'No se pudo cargar la lista de modelos.';
+          this.loading = false;
+        });
+    },
+
+    initDataTable() {
+      if (this.dataTable) this.dataTable.destroy();
+      this.dataTable = $('#modelos_datatable').DataTable({
+        language: { url: "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" },
+        pageLength: 10,
+        responsive: true,
+        order: [[0, 'desc']], // ID descendente
+        columnDefs: [
+          { orderable: false, targets: 4 } // No ordenar por la columna de acciones
+        ]
+      });
+    },
+
+    prepararEdicion(modelo) {
+      this.modeloEditando = JSON.parse(JSON.stringify(modelo));
+      if(!this.bsModalEditar) {
+        this.bsModalEditar = new bootstrap.Modal(document.getElementById('editarModal'));
+      }
+      this.bsModalEditar.show();
+    },
+
+    confirmarEliminar(modelo) {
+      this.modeloAEliminar = modelo;
+    }
+  }
+})
+</script>
+{% endblock %}

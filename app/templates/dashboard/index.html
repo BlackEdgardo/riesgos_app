@@ -1,0 +1,69 @@
+{# app/templates/dashboard/index.html #}
+{% extends "basic.html" %}
+
+{% block title %}Dashboard Gráfico{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h4 class="mb-0 text-center">Distribución de Riesgos</h4>
+            </div>
+            <div class="card-body">
+                <div style="height: 400px; width: 100%; display: flex; justify-content: center;">
+                    <canvas id="riskChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    
+    // 1. Llamamos a la API que creamos en Python
+    fetch('/api/datos-grafico')
+        .then(response => {
+            if (!response.ok) { throw new Error("Error de red"); }
+            return response.json();
+        })
+        .then(datos => {
+            // 2. Dibujamos el gráfico con los datos recibidos
+            const ctx = document.getElementById('riskChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut', // Opciones: 'pie', 'bar', 'doughnut'
+                data: {
+                    labels: datos.labels, // ["Alto", "Medio", "Bajo"]
+                    datasets: [{
+                        label: 'Cantidad de Evaluaciones',
+                        data: datos.data, // [X, Y, Z]
+                        backgroundColor: [
+                            '#dc3545', // Rojo (Alto)
+                            '#ffc107', // Amarillo (Medio)
+                            '#198754'  // Verde (Bajo)
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Se adapta al div contenedor
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { size: 14 } }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error cargando el gráfico:', error));
+});
+</script>
+
+{% endblock %}

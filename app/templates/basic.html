@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Tell the browser to be responsive to screen width -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Favicon icon -->
+    <link rel="icon" type="image/png" sizes="16x16"
+          href="{{ url_for('static', filename='assets/images/favicon.png') }}">
+
+    <!-- 👇 bloque de título reutilizable -->
+    <title>{% block title %}Dashboard – Riesgos{% endblock %}</title>
+
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='dist/css/style.min.css') }}" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Preloader -->
+    <div class="preloader">
+        <div class="lds-ripple">
+            <div class="lds-pos"></div>
+            <div class="lds-pos"></div>
+        </div>
+    </div>
+
+    <!-- Main wrapper -->
+    <div id="main-wrapper"
+        data-theme="light"
+        data-layout="vertical"
+        data-navbarbg="skin6"
+        data-sidebartype="full"
+        data-sidebar-position="fixed"
+        data-header-position="fixed"
+        data-boxed-layout="full">
+
+        <!-- Topbar header -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none"
+                       href="javascript:void(0)">
+                        <i class="ti-menu ti-close"></i>
+                    </a>
+
+                    <!-- Logo -->
+                    <div class="navbar-brand">
+                        <a href="#">
+                            <img src="{{ url_for('static', filename='assets/images/logo-riesgos.png') }}"
+                                 alt="Logo" width="130" height="70" class="img-fluid">
+                        </a>
+                    </div>
+
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light"
+                       href="javascript:void(0)"
+                       data-bs-toggle="collapse"
+                       data-bs-target="#navbarSupportedContent"
+                       aria-controls="navbarSupportedContent"
+                       aria-expanded="false"
+                       aria-label="Toggle navigation">
+                        <i class="ti-more"></i>
+                    </a>
+                </div>
+
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1"></ul>
+
+                    <!-- Menú usuario -->
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)"
+                               data-bs-toggle="dropdown"
+                               aria-haspopup="true"
+                               aria-expanded="false">
+                                <img src="{{ url_for('static', filename='assets/images/users/profile-pic.jpg') }}"
+                                     alt="user" class="rounded-circle" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block">
+                                    <span>Hola,</span>
+                                    <span class="text-dark">Usuario</span>
+                                    <i data-feather="chevron-down" class="svg-icon"></i>
+                                </span>
+                            </a>
+
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item" href="#">
+                                    <i data-feather="user" class="svg-icon me-2 ms-1"></i> Mi perfil
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="#">
+                                    <i data-feather="settings" class="svg-icon me-2 ms-1"></i> Configuración
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                    <i data-feather="power" class="svg-icon me-2 ms-1"></i> Cerrar sesión
+                                </a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+        <!-- End Topbar header -->
+
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link"
+                               href="{{ url_for('dashboard.index') }}"
+                               aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Inicio</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link"
+                            href="{{ url_for('company.lista_empresas') }}"
+                            aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Empresas</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link"
+                               href="{{ url_for('risk_model.lista_modelos') }}"
+                               aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Modelos Bayesianos</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link"
+                               href="{{ url_for('inference.index') }}"
+                               aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Inferencia</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+        <!-- End Left Sidebar -->
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <!-- 👇 AQUÍ metemos el bloque reutilizable -->
+            <div class="container-fluid" id="inicio">
+                {% block content %}
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="text-center mb-3">
+                                    Bienvenido al Sistema de Evaluación de Riesgos
+                                </h3>
+                                <p class="text-center">
+                                    Aquí podrás gestionar tus modelos bayesianos, realizar inferencias,
+                                    analizar riesgos y administrar toda la información.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endblock %}
+            </div>
+
+            <!-- Footer -->
+            <footer class="footer text-center">
+                © {{ now().year if now else "2025" }} Sistema de Gestión de Riesgos
+            </footer>
+        </div>
+        <!-- End Page wrapper -->
+    </div>
+    <!-- End Wrapper -->
+
+    <div class="chat-windows"></div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='assets/libs/jquery/dist/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/libs/popper.js/dist/umd/popper.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/libs/bootstrap/dist/js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/js/app-style-switcher.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/js/feather.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/extra-libs/sparkline/sparkline.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/js/sidebarmenu.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/js/custom.min.js') }}"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var trigger = document.querySelector(".nav-item.dropdown > .nav-link");
+            var menu = document.querySelector(".nav-item.dropdown .dropdown-menu");
+
+            if (!trigger || !menu) return;
+
+            trigger.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                menu.classList.toggle("show");
+            });
+
+            document.addEventListener("click", function (e) {
+                if (!menu.contains(e.target) && !trigger.contains(e.target)) {
+                    menu.classList.remove("show");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

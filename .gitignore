@@ -1,0 +1,12 @@
+# --- Python Bytecode (Lo que pediste) ---
+__pycache__/
+*.pyc
+
+# --- Variables de Entorno (Seguridad crítica) ---
+.env
+
+# --- Entornos Virtuales (Opcional pero recomendado) ---
+# Evita subir tu carpeta de librerías por error
+venv/
+env/
+.venv/

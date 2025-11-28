@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Iniciar sesión – Sistema de Riesgos</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="16x16"
+        href="{{ url_for('static', filename='assets/images/favicon.png') }}">
+
+  <!-- CSS principal de la plantilla -->
+  <link href="{{ url_for('static', filename='dist/css/style.min.css') }}" rel="stylesheet" />
+  
+  <style>
+    /* Estilos mejorados para el login */
+    
+    /* Variables CSS para consistencia */
+    :root {
+      --primary-color: #10b981;
+      --primary-hover: #059669;
+      --primary-active: #047857;
+      --border-color: #e5e7eb;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --background: #f9fafb;
+      --surface: #ffffff;
+      --error: #ef4444;
+      --focus-ring: rgba(16, 185, 129, 0.2);
+    }
+    
+    /* Fondo con gradiente sutil */
+    .auth-wrapper {
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Patrón de fondo decorativo */
+    .auth-wrapper::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(circle at 25% 25%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                        radial-gradient(circle at 75% 75%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    /* Caja de autenticación mejorada */
+    .auth-box {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 
+                  0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      border: 1px solid var(--border-color);
+      border-top: 4px solid var(--primary-color) !important;
+      max-width: 440px;
+      width: 100%;
+      margin: 20px;
+      position: relative;
+      z-index: 1;
+      animation: fadeInUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Mejoras en el logo y título */
+    .auth-box img {
+      transition: transform 0.3s ease;
+    }
+    
+    .auth-box img:hover {
+      transform: scale(1.02);
+    }
+    
+    .auth-box h4 {
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+    
+    /* Mejoras en labels */
+    .auth-box label {
+      display: block;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+    
+    /* Inputs mejorados */
+    .auth-box .form-control {
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      background: var(--surface);
+      color: var(--text-primary);
+    }
+    
+    .auth-box .form-control::placeholder {
+      color: var(--text-secondary);
+      opacity: 0.6;
+    }
+    
+    /* Estados del input */
+    .auth-box .form-control:hover {
+      border-color: #d1d5db;
+    }
+    
+    .auth-box .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+      background: var(--surface);
+    }
+    
+    .auth-box .form-control:invalid {
+      border-color: var(--border-color);
+    }
+    
+    .auth-box .form-control:focus:invalid {
+      border-color: var(--error);
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+    
+    /* Espaciado mejorado */
+    .auth-box .m-b-20 {
+      margin-bottom: 20px;
+    }
+    
+    .auth-box .p-t-20 {
+      padding-top: 32px;
+    }
+    
+    .auth-box .p-b-20 {
+      padding-bottom: 24px;
+    }
+    
+    .auth-box .p-b-30 {
+      padding-bottom: 32px;
+    }
+    
+    .auth-box .p-3 {
+      padding: 24px 32px;
+    }
+    
+    /* Botón mejorado */
+    .auth-box .btn-success {
+      background: var(--primary-color);
+      border: none;
+      border-radius: 8px;
+      padding: 13px 24px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Efecto ripple en el botón */
+    .auth-box .btn-success::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    
+    .auth-box .btn-success:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+    
+    .auth-box .btn-success:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      transform: translateY(-1px);
+    }
+    
+    .auth-box .btn-success:active {
+      background: var(--primary-active);
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    }
+    
+    .auth-box .btn-success:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+    
+    /* Estado de carga del botón */
+    .auth-box .btn-success:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    /* Mejoras en los mensajes flash */
+    .alert {
+      border-radius: 8px;
+      border: none;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      animation: slideInDown 0.3s ease-out;
+    }
+    
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .alert-danger {
+      background: #fef2f2;
+      color: #991b1b;
+      border-left: 4px solid var(--error);
+    }
+    
+    .alert-success {
+      background: #f0fdf4;
+      color: #166534;
+      border-left: 4px solid var(--primary-color);
+    }
+    
+    /* Botón de cerrar alerta */
+    .alert .btn-close {
+      opacity: 0.5;
+      transition: opacity 0.2s ease;
+    }
+    
+    .alert .btn-close:hover {
+      opacity: 1;
+    }
+    
+    /* Divisor mejorado */
+    .border-top {
+      border-top: 1px solid var(--border-color) !important;
+    }
+    
+    /* Link de crear cuenta (si se activa) */
+    .auth-box a {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    
+    .auth-box a:hover {
+      color: var(--primary-hover);
+      text-decoration: underline;
+    }
+    
+    /* Responsive mejorado */
+    @media (max-width: 576px) {
+      .auth-box {
+        margin: 12px;
+        border-radius: 10px;
+      }
+      
+      .auth-box .p-3 {
+        padding: 20px 24px;
+      }
+      
+      .auth-box h4 {
+        font-size: 1rem;
+      }
+      
+      .auth-box .form-control {
+        padding: 11px 14px;
+        font-size: 0.9rem;
+      }
+      
+      .auth-box .btn-success {
+        padding: 12px 20px;
+        font-size: 0.95rem;
+      }
+    }
+    
+    /* Mejora de accesibilidad - indicador de campo requerido */
+    .auth-box label::after {
+      content: ' *';
+      color: var(--error);
+      font-weight: 600;
+    }
+    
+    /* Mejora de contraste en modo de alto contraste */
+    @media (prefers-contrast: high) {
+      .auth-box {
+        border: 2px solid var(--text-primary);
+      }
+      
+      .auth-box .form-control {
+        border-width: 2px;
+      }
+    }
+    
+    /* Respeto por preferencias de movimiento reducido */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="main-wrapper">
+
+    <div class="auth-wrapper d-flex no-block justify-content-center align-items-center"
+         style="min-height:100vh;">
+
+      <div class="auth-box border-top border-secondary">
+
+        <div id="loginform">
+          <div class="text-center p-t-20 p-b-20">
+            <img src="{{ url_for('static', filename='assets/images/logo-riesgos.png') }}" alt="Logo" width="130" height="70" class="img-fluid">
+            <h4 class="m-t-20">Sistema de Evaluación de Riesgos</h4>
+          </div>
+
+          <!-- Mensajes flash -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="px-4">
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+                       role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          <!-- Formulario de login -->
+          <form class="form-horizontal m-t-20"
+                id="loginform"
+                method="post"
+                action="{{ url_for('auth.login') }}">
+
+            <div class="row p-b-30 p-3">
+
+              <div class="col-12 m-b-20">
+                <label for="email">Correo electrónico</label>
+                <input class="form-control"
+                       type="email"
+                       name="email"
+                       id="email"
+                       required
+                       autocomplete="email"
+                       placeholder="usuario@empresa.com"
+                       aria-describedby="emailHelp" />
+              </div>
+
+              <div class="col-12 m-b-20">
+                <label for="password">Contraseña</label>
+                <input class="form-control"
+                       type="password"
+                       name="password"
+                       id="password"
+                       required
+                       autocomplete="current-password"
+                       placeholder="********"
+                       aria-describedby="passwordHelp" />
+              </div>
+
+            </div>
+
+            <div class="row border-top border-secondary p-3">
+              <div class="col-12">
+                <button class="btn btn-success w-100"
+                        type="submit"
+                        aria-label="Iniciar sesión en el sistema">
+                  Iniciar sesión
+                </button>
+              </div>
+            </div>
+
+          </form>
+
+          <!-- Enlace opcional a registro -->
+          <!--
+          <div class="text-center m-t-10">
+            <a href="{{ url_for('auth.register') }}">Crear cuenta</a>
+          </div>
+          -->
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts de la plantilla -->
+  <script src="{{ url_for('static', filename='assets/libs/jquery/dist/jquery.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+</body>
+
+</html>

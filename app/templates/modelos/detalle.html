@@ -1,0 +1,347 @@
+{% extends "basic.html" %}
+
+{% block title %} Diseñador – {{ modelo.nombre }} {% endblock %}
+
+{% block content %}
+<link href="https://unpkg.com/vis-network/standalone/styles/vis-network.min.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+
+<style>
+    #network-container {
+        width: 100%;
+        height: 600px;
+        border: 1px solid #ddd;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+    }
+    .inspector-panel {
+        height: 600px;
+        overflow-y: auto;
+        border-left: 1px solid #ddd;
+        background: white;
+    }
+</style>
+
+<div id="designer-app" class="row">
+    <div class="col-12 mb-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="m-0"><i class="fas fa-project-diagram text-primary me-2"></i>{{ modelo.nombre }}</h3>
+            <small class="text-muted">Editor de Estructura y Parámetros</small>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary me-2" @click="resetZoom">
+                <i class="fas fa-compress-arrows-alt"></i> Centrar
+            </button>
+            <button class="btn btn-success" @click="guardarCambios" :disabled="saving">
+                <i class="fas fa-save me-1"></i> <span v-if="saving">Guardando...</span><span v-else>Guardar Modelo</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between">
+                <span class="fw-bold text-muted">Lienzo de la Red</span>
+                <small class="text-muted">Doble clic para crear nodo • Arrastrar para conectar</small>
+            </div>
+            <div id="network-container"></div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm inspector-panel">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>Propiedades</h5>
+            </div>
+            
+            <div class="card-body">
+                <div v-if="!selectedNodeId" class="text-center text-muted py-5">
+                    <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
+                    <p>Selecciona un nodo en el gráfico para ver y editar sus propiedades y probabilidades (CPT).</p>
+                    <hr>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" @click="addNodeManual">
+                            <i class="fas fa-plus-circle"></i> Añadir Nodo Nuevo
+                        </button>
+                    </div>
+                </div>
+
+                <div v-else>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre del Nodo</label>
+                        <input type="text" v-model="selectedNodeData.label" class="form-control" @change="updateNodeLabel">
+                        <small class="text-muted">ID interno: ${ selectedNodeId }</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Estados Posibles</label>
+                        <div v-for="(estado, index) in selectedNodeCPT.states" :key="index" class="input-group mb-2">
+                            <input type="text" v-model="selectedNodeCPT.states[index]" class="form-control form-control-sm">
+                            <button class="btn btn-outline-danger btn-sm" @click="removeState(index)">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <button class="btn btn-sm btn-link p-0" @click="addState">+ Añadir Estado</button>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold m-0">Probabilidades (CPT)</label>
+                            <span class="badge bg-info text-dark">JSON</span>
+                        </div>
+                        <p class="small text-muted mb-1" v-if="hasParents(selectedNodeId)">
+                            Este nodo depende de: <strong>${ getParents(selectedNodeId).join(', ') }</strong>
+                        </p>
+                        <p class="small text-muted mb-1" v-else>
+                            Este es un nodo raíz (Priors).
+                        </p>
+                        
+                        <textarea class="form-control font-monospace small" 
+                                  rows="8" 
+                                  v-model="cptJsonString"
+                                  @blur="parseCPTJson"></textarea>
+                        <small class="text-danger" v-if="jsonError">${ jsonError }</small>
+                    </div>
+
+                    <div class="d-grid">
+                         <button class="btn btn-danger btn-sm" @click="deleteSelectedNode">
+                            <i class="fas fa-trash"></i> Eliminar Nodo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inyectamos los datos desde Flask con seguridad safe para JSON
+    const modeloInicial = {{ modelo.estructura_json | tojson | safe }} || { nodes: [], edges: [] };
+    const cptsInicial = {{ modelo.cpts_json | tojson | safe }} || {};
+    const modeloId = {{ modelo.id }};
+
+    new Vue({
+        el: '#designer-app',
+        delimiters: ['${', '}'],
+        data() {
+            return {
+                network: null,
+                nodes: new vis.DataSet([]),
+                edges: new vis.DataSet([]),
+                cpts: JSON.parse(JSON.stringify(cptsInicial)), // Copia profunda
+                
+                selectedNodeId: null,
+                selectedNodeData: {}, // Datos visuales (label, color)
+                selectedNodeCPT: { states: ['Si', 'No'], prior: {}, cpt: [] }, // Datos lógicos
+                
+                cptJsonString: '',
+                jsonError: null,
+                saving: false
+            }
+        },
+        mounted() {
+            this.initNetwork();
+        },
+        methods: {
+            initNetwork() {
+                // 1. Cargar datos iniciales
+                if (modeloInicial.nodes) this.nodes.add(modeloInicial.nodes);
+                if (modeloInicial.edges) this.edges.add(modeloInicial.edges);
+
+                // 2. Configurar Vis.js
+                const container = document.getElementById('network-container');
+                const data = { nodes: this.nodes, edges: this.edges };
+                const options = {
+                    nodes: {
+                        shape: 'box',
+                        color: { background: '#fff', border: '#0d6efd' },
+                        font: { size: 14 }
+                    },
+                    edges: {
+                        arrows: 'to',
+                        smooth: { type: 'cubicBezier' }
+                    },
+                    manipulation: {
+                        enabled: true,
+                        addNode: (data, callback) => {
+                            // Hook para añadir nodo por doble clic (opcional)
+                            data.label = 'Nuevo Nodo';
+                            callback(data);
+                            this.ensureCPT(data.id, data.label);
+                        },
+                        addEdge: (data, callback) => {
+                            if (data.from === data.to) return; // No permitir auto-ciclos simples
+                            callback(data);
+                            this.updateNodeDependencies(data.to); // Actualizar CPT del hijo
+                        }
+                    },
+                    interaction: { hover: true, selectConnectedEdges: false }
+                };
+
+                this.network = new vis.Network(container, data, options);
+
+                // 3. Eventos
+                this.network.on("selectNode", (params) => {
+                    this.selectNode(params.nodes[0]);
+                });
+
+                this.network.on("deselectNode", () => {
+                    this.selectedNodeId = null;
+                });
+            },
+
+            selectNode(nodeId) {
+                this.selectedNodeId = nodeId;
+                this.selectedNodeData = this.nodes.get(nodeId);
+                
+                // Asegurar que exista CPT para este nodo
+                this.ensureCPT(nodeId, this.selectedNodeData.label);
+                
+                // Cargar datos en el inspector
+                this.selectedNodeCPT = this.cpts[this.selectedNodeData.label]; 
+                
+                // Convertir la parte específica de probabilidad a string para editar
+                // Si es nodo raíz mostramos 'prior', si es hijo mostramos 'cpt'
+                const parents = this.getParents(nodeId);
+                if (parents.length > 0) {
+                    this.cptJsonString = JSON.stringify(this.selectedNodeCPT.cpt || [], null, 2);
+                } else {
+                    this.cptJsonString = JSON.stringify(this.selectedNodeCPT.prior || {}, null, 2);
+                }
+            },
+
+            updateNodeLabel() {
+                if (!this.selectedNodeId) return;
+                
+                const oldLabel = this.nodes.get(this.selectedNodeId).label;
+                const newLabel = this.selectedNodeData.label;
+                
+                // Actualizar visualmente
+                this.nodes.update({ id: this.selectedNodeId, label: newLabel });
+                
+                // Actualizar clave en objeto CPTs
+                if (oldLabel !== newLabel) {
+                    this.$set(this.cpts, newLabel, this.cpts[oldLabel]);
+                    this.$delete(this.cpts, oldLabel);
+                    
+                    // TODO: Actualizar referencias en edges o hijos si fuera necesario
+                    // (En un sistema real esto es más complejo por las dependencias)
+                }
+            },
+
+            addNodeManual() {
+                const label = prompt("Nombre del nuevo nodo:", "Nuevo Nodo");
+                if (!label) return;
+                
+                // Generar ID simple
+                const newId = label.replace(/\s+/g, '_') + '_' + Date.now();
+                this.nodes.add({ id: newId, label: label });
+                this.ensureCPT(newId, label);
+            },
+
+            deleteSelectedNode() {
+                if(confirm("¿Eliminar nodo y sus conexiones?")) {
+                    const label = this.selectedNodeData.label;
+                    this.nodes.remove(this.selectedNodeId);
+                    // Vis.js borra las aristas automáticamente
+                    this.$delete(this.cpts, label);
+                    this.selectedNodeId = null;
+                }
+            },
+
+            // --- Lógica de CPT ---
+            ensureCPT(id, label) {
+                if (!this.cpts[label]) {
+                    this.$set(this.cpts, label, {
+                        states: ["OK", "Fallo"],
+                        prior: { "OK": 0.5, "Fallo": 0.5 } // Default
+                    });
+                }
+            },
+
+            getParents(nodeId) {
+                // Obtener nodos que apuntan a nodeId
+                const parentEdges = this.edges.get({ filter: item => item.to === nodeId });
+                const parentIds = parentEdges.map(e => e.from);
+                const parentNodes = this.nodes.get(parentIds);
+                return parentNodes.map(n => n.label);
+            },
+            
+            hasParents(nodeId) {
+                return this.getParents(nodeId).length > 0;
+            },
+
+            updateNodeDependencies(childId) {
+                // Lógica placeholder: en una app real, aquí recalcularías la tabla CPT
+                // basándote en las combinaciones de estados de los padres.
+                console.log("Nueva dependencia detectada para:", childId);
+            },
+
+            addState() {
+                this.selectedNodeCPT.states.push("NuevoEstado");
+            },
+
+            removeState(index) {
+                this.selectedNodeCPT.states.splice(index, 1);
+            },
+
+            parseCPTJson() {
+                try {
+                    const parsed = JSON.parse(this.cptJsonString);
+                    const parents = this.getParents(this.selectedNodeId);
+                    
+                    if (parents.length > 0) {
+                        this.selectedNodeCPT.cpt = parsed;
+                    } else {
+                        this.selectedNodeCPT.prior = parsed;
+                    }
+                    this.jsonError = null;
+                } catch (e) {
+                    this.jsonError = "JSON inválido: " + e.message;
+                }
+            },
+
+            resetZoom() {
+                this.network.fit();
+            },
+
+            guardarCambios() {
+                this.saving = true;
+                
+                // Preparar datos para enviar
+                // Vis.js DataSet exporta Arrays, el backend espera eso
+                const payload = {
+                    estructura_json: {
+                        nodes: this.nodes.get(),
+                        edges: this.edges.get()
+                    },
+                    cpts_json: this.cpts
+                };
+
+                fetch(`/modelos-bn/${modeloId}/editar_estructura`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Si usas CSRF token en Flask, inclúyelo aquí:
+                        'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' 
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert("Modelo guardado correctamente");
+                    this.saving = false;
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Error al guardar (Ver consola)");
+                    this.saving = false;
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}
